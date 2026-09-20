@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "oracc-mcp"
+version = "0.1.0"
+description = "Read-only MCP server wrapper for the ORACC open cuneiform data API"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.0.0,<2",
+    "httpx>=0.27,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+    "pytest-asyncio>=0.24,<1",
+    "respx>=0.22,<1",
+]
+
+[project.scripts]
+oracc-mcp = "oracc_mcp.server:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    "live: marks tests that hit the real ORACC API (deselect with '-m not live')",
+]
