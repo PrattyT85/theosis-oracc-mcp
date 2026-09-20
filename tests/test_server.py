@@ -7,7 +7,7 @@ import json
 import pytest
 import respx
 
-from conftest import make_catalogue, make_manifest, make_metadata, make_projects_json, make_text
+from conftest import make_archive, make_catalogue, make_manifest, make_metadata, make_projects_json, make_text
 
 
 class TestListProjects:
@@ -52,7 +52,7 @@ class TestGetProjectMetadata:
     @pytest.mark.asyncio
     async def test_returns_metadata(self, mock_http: respx.MockRouter):
         from oracc_mcp.server import get_project_metadata
-        mock_http.get("/rimanum/metadata.json").respond(json=make_metadata())
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive())
         result = await get_project_metadata("rimanum")
         parsed = json.loads(result)
         assert "config" in parsed
@@ -69,17 +69,18 @@ class TestGetProjectManifest:
     @pytest.mark.asyncio
     async def test_returns_manifest(self, mock_http: respx.MockRouter):
         from oracc_mcp.server import get_project_manifest
-        mock_http.get("/rimanum/manifest.json").respond(json=make_manifest())
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive())
         result = await get_project_manifest("rimanum")
         parsed = json.loads(result)
-        assert parsed["type"] == "manifest"
+        assert parsed["type"] == "archive_manifest"
+        assert "metadata.json" in parsed["files"]
 
 
 class TestListProjectTexts:
     @pytest.mark.asyncio
     async def test_returns_texts(self, mock_http: respx.MockRouter):
         from oracc_mcp.server import list_project_texts
-        mock_http.get("/rimanum/catalogue.json").respond(json=make_catalogue())
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive())
         result = await list_project_texts("rimanum")
         parsed = json.loads(result)
         assert parsed["count"] == 2
@@ -88,7 +89,7 @@ class TestListProjectTexts:
     @pytest.mark.asyncio
     async def test_filter_by_designation(self, mock_http: respx.MockRouter):
         from oracc_mcp.server import list_project_texts
-        mock_http.get("/rimanum/catalogue.json").respond(json=make_catalogue())
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive())
         result = await list_project_texts("rimanum", query="YOS 14, 341")
         parsed = json.loads(result)
         assert parsed["count"] == 1
@@ -99,10 +100,10 @@ class TestGetText:
     @pytest.mark.asyncio
     async def test_returns_bounded_text_with_provenance(self, mock_http: respx.MockRouter):
         from oracc_mcp.server import get_text
-        mock_http.get("/rimanum/corpusjson/P295625.json").respond(json=make_text())
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive())
         result = await get_text("rimanum", "P295625")
         parsed = json.loads(result)
-        assert parsed["source_url"] == "https://oracc.museum.upenn.edu/rimanum/corpusjson/P295625.json"
+        assert parsed["source_url"] == "https://oracc.museum.upenn.edu/json/rimanum.zip#rimanum/corpusjson/P295625.json"
         assert parsed["textid"] == "P295625"
         assert parsed["project"] == "rimanum"
         assert "transliteration" in parsed
@@ -111,7 +112,7 @@ class TestGetText:
     @pytest.mark.asyncio
     async def test_translation_extracted(self, mock_http: respx.MockRouter):
         from oracc_mcp.server import get_text
-        mock_http.get("/rimanum/corpusjson/P295625.json").respond(json=make_text())
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive())
         result = await get_text("rimanum", "P295625")
         parsed = json.loads(result)
         assert "translation" in parsed
@@ -122,7 +123,7 @@ class TestSearchProject:
     @pytest.mark.asyncio
     async def test_search_by_designation(self, mock_http: respx.MockRouter):
         from oracc_mcp.server import search_project
-        mock_http.get("/rimanum/catalogue.json").respond(json=make_catalogue())
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive())
         result = await search_project("rimanum", "YOS 14, 342")
         parsed = json.loads(result)
         assert parsed["count"] == 1
@@ -131,7 +132,7 @@ class TestSearchProject:
     @pytest.mark.asyncio
     async def test_search_no_match(self, mock_http: respx.MockRouter):
         from oracc_mcp.server import search_project
-        mock_http.get("/rimanum/catalogue.json").respond(json=make_catalogue())
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive())
         result = await search_project("rimanum", "nonexistent")
         parsed = json.loads(result)
         assert parsed["count"] == 0
@@ -171,7 +172,7 @@ class TestMalformedCatalogueHandling:
     async def test_members_not_dict_returns_error(self, mock_http: respx.MockRouter):
         from oracc_mcp.server import list_project_texts
         bad_catalogue = {"type": "catalogue", "members": "not a dict"}
-        mock_http.get("/rimanum/catalogue.json").respond(json=bad_catalogue)
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive(catalogue=bad_catalogue))
         result = await list_project_texts("rimanum")
         parsed = json.loads(result)
         assert "error" in parsed
@@ -186,7 +187,7 @@ class TestMalformedCatalogueHandling:
                 "P_bad": "not a dict entry",
             },
         }
-        mock_http.get("/rimanum/catalogue.json").respond(json=cat)
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive(catalogue=cat))
         result = await list_project_texts("rimanum")
         parsed = json.loads(result)
         assert parsed["count"] == 1
@@ -198,7 +199,7 @@ class TestEmptyCDL:
     async def test_empty_cdl_returns_empty_transliteration(self, mock_http: respx.MockRouter):
         from oracc_mcp.server import get_text
         text = {"type": "cdl", "project": "rimanum", "textid": "P295625", "cdl": []}
-        mock_http.get("/rimanum/corpusjson/P295625.json").respond(json=text)
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive(text=text))
         result = await get_text("rimanum", "P295625")
         parsed = json.loads(result)
         assert parsed["transliteration"] == ""

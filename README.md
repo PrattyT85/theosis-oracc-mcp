@@ -1,6 +1,6 @@
 # theosis-oracc-mcp
 
-Read-only MCP server wrapper for the [ORACC](https://oracc.museum.upenn.edu/) (Open Richly Annotated Cuneiform Corpus) JSON API, built for integration with the [Theosis](https://github.com/PrattyT85/theosis-mcp) theological research stack.
+Read-only MCP server wrapper for the [ORACC](https://oracc.museum.upenn.edu/) (Open Richly Annotated Cuneiform Corpus) JSON archive API, built for integration with the [Theosis](https://github.com/PrattyT85/theosis-mcp) theological research stack.
 
 ## Features
 
@@ -39,7 +39,7 @@ ORACC_LIVE=1 uv run pytest -m live -v
 
 ## ORACC Attribution
 
-This server is a read-only client for the [ORACC JSON API](https://oracc.museum.upenn.edu/doc/opendata/json/). ORACC data is provided by the University of Pennsylvania and released under [Creative Commons Attribution-ShareAlike 3.0](https://creativecommons.org/licenses/by-sa/3.0/). This server does not store, cache, or redistribute ORACC data — all results are fetched on demand and returned with provenance metadata.
+This server is a read-only client for the [ORACC JSON archive API](https://oracc.museum.upenn.edu/json/). `projects.json` is used for discovery; project metadata, catalogues, corpora, and text editions are read from the current `/json/<project-archive>.zip` downloads. Archives are bounded and cached only in memory for the lifetime of one client; they are not persisted or redistributed. Results include the archive URL and member path as provenance. ORACC data is provided by the University of Pennsylvania and its project contributors; follow the licence and attribution for the specific source.
 
 **Citation**: Steve Tinney & Eleanor Robson, 'Oracc JSON Data: A brief introduction for programmers', *Oracc: The Open Richly Annotated Cuneiform Corpus*, Oracc, 2019 [http://oracc.museum.upenn.edu/doc/opendata/json/]
 

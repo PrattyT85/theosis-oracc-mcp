@@ -8,7 +8,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from .client import OraccClient, validate_project, validate_text_id
+from .client import OraccClient, archive_url, validate_project, validate_text_id
 from .errors import InvalidProjectError, InvalidTextIdError, MalformedJSONError, OraccError, ResponseTooLargeError, UpstreamHTTPError
 
 mcp = FastMCP("oracc-mcp", instructions=(
@@ -138,7 +138,7 @@ async def get_text(project: str, text_id: str) -> str:
     """
     try:
         data = await _get_client().get_text(project, text_id)
-        source_url = f"https://oracc.museum.upenn.edu/{project}/corpusjson/{text_id}.json"
+        source_url = f"{archive_url(project)}#{project}/corpusjson/{text_id}.json"
 
         result: dict[str, Any] = {
             "source_url": source_url,

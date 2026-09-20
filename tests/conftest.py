@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import io
 import json
+import zipfile
 from typing import Any, AsyncIterator
 
 import httpx
@@ -78,6 +80,32 @@ def make_corpus(project: str = "rimanum") -> dict:
     }
 
 
+def make_archive(
+    project: str = "rimanum",
+    *,
+    metadata: dict | None = None,
+    catalogue: dict | None = None,
+    corpus: dict | None = None,
+    text: dict | None = None,
+) -> bytes:
+    """Build an in-memory ORACC archive matching the current API."""
+    metadata = metadata or make_metadata(project)
+    catalogue = catalogue or make_catalogue(project)
+    corpus = corpus or make_corpus(project)
+    text = text or make_text(project)
+    files = {
+        "metadata.json": metadata,
+        "catalogue.json": catalogue,
+        "corpus.json": corpus,
+        "corpusjson/P295625.json": text,
+    }
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, payload in files.items():
+            zf.writestr(f"{project}/{name}", json.dumps(payload))
+    return out.getvalue()
+
+
 def make_text(project: str = "rimanum", text_id: str = "P295625") -> dict:
     return {
         "type": "cdl",
@@ -108,6 +136,18 @@ def make_text(project: str = "rimanum", text_id: str = "P295625") -> dict:
             }
         ],
     }
+
+
+@pytest.fixture(autouse=True)
+async def reset_server_client() -> AsyncIterator[None]:
+    """Prevent the module-level MCP client cache leaking between tests."""
+    from oracc_mcp import server
+
+    server._client = None
+    yield
+    if server._client is not None:
+        await server._client.close()
+    server._client = None
 
 
 @pytest.fixture

@@ -48,3 +48,12 @@ class ResponseTooLargeError(OraccError):
         self.url = url
         self.size = size
         self.limit = limit
+
+
+class ArchiveMemberError(OraccError):
+    """Raised when an archive/member is unsafe, missing, or malformed."""
+
+    def __init__(self, project: str, member: str) -> None:
+        super().__init__(f"Invalid or unavailable ORACC archive member: {project}/{member}")
+        self.project = project
+        self.member = member

@@ -20,6 +20,7 @@ import sys
 import pytest
 
 from oracc_mcp.client import OraccClient
+from oracc_mcp.errors import OraccError
 
 
 def _pick_project(projects: list[str]) -> str:
@@ -73,14 +74,23 @@ async def run_smoke() -> dict:
         print(f"  Catalogue has {len(text_ids)} texts (first 5: {text_ids[:5]})")
         results["catalogue_count"] = len(text_ids)
 
-        # 5. Fetch first text
-        if text_ids:
-            first_id = text_ids[0]
-            print(f"\nFetching first text: {first_id} ...")
-            text_data = await client.get_text(project, first_id)
+        # 5. Fetch the first non-empty text edition. ORACC catalogues can
+        # include zero-byte members for unpublished or damaged witnesses.
+        selected_id = None
+        text_data = None
+        for candidate_id in text_ids:
+            try:
+                text_data = await client.get_text(project, candidate_id)
+                selected_id = candidate_id
+                break
+            except OraccError:
+                continue
+
+        if selected_id and text_data is not None:
+            print(f"\nFetching first non-empty text: {selected_id} ...")
             cdl = text_data.get("cdl", [])
-            # Count fragments
             frag_count = 0
+
             def _count(nodes):
                 nonlocal frag_count
                 for n in nodes:
@@ -89,13 +99,14 @@ async def run_smoke() -> dict:
                     children = n.get("cdl")
                     if children and isinstance(children, list):
                         _count(children)
+
             _count(cdl)
             print(f"  CDL nodes: {len(cdl)}, lemma fragments: {frag_count}")
-            print(f"  source: https://oracc.museum.upenn.edu/{project}/corpusjson/{first_id}.json")
-            results["first_text_id"] = first_id
+            print(f"  source: https://oracc.museum.upenn.edu/json/{project.replace('/', '-')}.zip#{project}/corpusjson/{selected_id}.json")
+            results["first_text_id"] = selected_id
             results["lemma_fragments"] = frag_count
         else:
-            print("  No texts in catalogue")
+            raise RuntimeError("No non-empty corpus text found in the selected project")
 
         print("\n=== Smoke test passed ===")
         results["status"] = "passed"

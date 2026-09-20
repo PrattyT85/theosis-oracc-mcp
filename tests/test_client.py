@@ -8,10 +8,10 @@ import httpx
 import pytest
 import respx
 
-from oracc_mcp.client import OraccClient, validate_project, validate_text_id
-from oracc_mcp.errors import InvalidProjectError, InvalidTextIdError, MalformedJSONError, ResponseTooLargeError, UpstreamHTTPError
+from oracc_mcp.client import OraccClient, archive_name, validate_project, validate_text_id
+from oracc_mcp.errors import ArchiveMemberError, InvalidProjectError, InvalidTextIdError, MalformedJSONError, ResponseTooLargeError, UpstreamHTTPError
 
-from conftest import make_catalogue, make_manifest, make_metadata, make_projects_json, make_text
+from conftest import make_archive, make_catalogue, make_manifest, make_metadata, make_projects_json, make_text
 
 
 # ---- URL / path safety ----
@@ -46,6 +46,26 @@ class TestProjectValidation:
     def test_special_chars_rejected(self):
         with pytest.raises(InvalidProjectError):
             validate_project("rimanum;rm -rf /")
+
+
+class TestArchiveMapping:
+    def test_nested_project_archive_name(self):
+        assert archive_name("aemw/alalakh/idrimi") == "aemw-alalakh-idrimi.zip"
+
+    def test_archive_member_rejects_traversal(self, client: OraccClient):
+        with pytest.raises(ArchiveMemberError):
+            client._member_bytes("rimanum", make_archive(), "../metadata.json")
+
+    @pytest.mark.asyncio
+    async def test_nested_project_archive_lookup(self, mock_http: respx.MockRouter):
+        project = "aemw/alalakh/idrimi"
+        mock_http.get("/json/aemw-alalakh-idrimi.zip").respond(
+            content=make_archive(project)
+        )
+        client = OraccClient()
+        result = await client.get_project_metadata(project)
+        assert result["config"]["pathname"] == project
+        await client.close()
 
 
 class TestTextIdValidation:
@@ -100,27 +120,28 @@ class TestOraccClient:
 
     @pytest.mark.asyncio
     async def test_get_project_manifest(self, client: OraccClient, mock_http: respx.MockRouter):
-        mock_http.get("/rimanum/manifest.json").respond(json=make_manifest())
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive())
         result = await client.get_project_manifest("rimanum")
-        assert result["type"] == "manifest"
+        assert result["type"] == "archive_manifest"
         assert result["project"] == "rimanum"
+        assert "catalogue.json" in result["files"]
 
     @pytest.mark.asyncio
     async def test_get_project_metadata(self, client: OraccClient, mock_http: respx.MockRouter):
-        mock_http.get("/rimanum/metadata.json").respond(json=make_metadata())
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive())
         result = await client.get_project_metadata("rimanum")
         assert result["config"]["pathname"] == "rimanum"
 
     @pytest.mark.asyncio
     async def test_get_text(self, client: OraccClient, mock_http: respx.MockRouter):
-        mock_http.get("/rimanum/corpusjson/P295625.json").respond(json=make_text())
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive())
         result = await client.get_text("rimanum", "P295625")
         assert result["textid"] == "P295625"
         assert result["type"] == "cdl"
 
     @pytest.mark.asyncio
     async def test_get_project_catalogue(self, client: OraccClient, mock_http: respx.MockRouter):
-        mock_http.get("/rimanum/catalogue.json").respond(json=make_catalogue())
+        mock_http.get("/json/rimanum.zip").respond(content=make_archive())
         result = await client.get_project_catalogue("rimanum")
         assert "P295625" in result["members"]
 
