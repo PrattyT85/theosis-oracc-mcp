@@ -13,7 +13,7 @@ from .errors import InvalidProjectError, InvalidTextIdError, MalformedJSONError,
 
 mcp = FastMCP("oracc-mcp", instructions=(
     "Read-only MCP server for the Open Richly Annotated Cuneiform Corpus (ORACC). "
-    "All tools query https://oracc.museum.upenn.edu JSON endpoints. "
+    "Project tools query the current https://oracc.museum.upenn.edu/json/ archives. "
     "No data is stored or modified; this server is for research reference only."
 ))
 
